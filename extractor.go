@@ -7,7 +7,7 @@ type Options struct {
 	ExactMatch       bool
 }
 
-func ExtractDominantColours(image image.Image, number int, options *Options) []Color {
+func ExtractDominantColors(image image.Image, number int, options *Options) []Color {
 	var sampling uint
 	exactMatch := false
 	if options != nil {
@@ -16,8 +16,8 @@ func ExtractDominantColours(image image.Image, number int, options *Options) []C
 	}
 	pixels := extractColors(image, int(sampling))
 
-	extractor := newDominantColourExtractor(number, exactMatch)
-	return extractor.extractDominantColours(pixels)
+	extractor := newDominantColorExtractor(number, exactMatch)
+	return extractor.extractDominantColors(pixels)
 }
 
 func extractColors(img image.Image, sampling int) []Color {

@@ -41,11 +41,11 @@ type colorExtractor struct {
 	exactMatch   bool
 }
 
-func newDominantColourExtractor(numCentroids int, match bool) *colorExtractor {
+func newDominantColorExtractor(numCentroids int, match bool) *colorExtractor {
 	return &colorExtractor{numCentroids: numCentroids, exactMatch: match}
 }
 
-func (c *colorExtractor) extractDominantColours(pixels []Color) []Color {
+func (c *colorExtractor) extractDominantColors(pixels []Color) []Color {
 	c.pixels = pixels
 
 	return c.runKMeans()

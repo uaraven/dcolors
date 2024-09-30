@@ -48,7 +48,7 @@ func TestExtractDominantColours(t *testing.T) {
 
 	for _, data := range testData {
 		img := loadImage(data.image)
-		result := ExtractDominantColours(img, data.count, &Options{
+		result := ExtractDominantColors(img, data.count, &Options{
 			SamplingInterval: data.sampling,
 			ExactMatch:       data.exactMatch,
 		})

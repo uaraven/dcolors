@@ -6,6 +6,9 @@ import (
 	"math"
 )
 
+// Color represents a color in RGB coordinates
+// This struct maintains internal representation of the color in L*a*b* space which is used to
+// calculate distance between colors
 type Color struct {
 	rgb [3]uint32
 	lab [3]float64
