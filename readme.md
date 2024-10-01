@@ -8,29 +8,45 @@ to RGB, where the similarity just means that numeric values for channel are clos
 
 ## Usage
 
+Add the dependency on the library.
+
 ```shell
 go get github.com/uaraven/dcolors
 ```
 
+Use it to extract colors.
+
 ```go
-    import "github.com/uaraven/dcolors"
+import "github.com/uaraven/dcolors"
 
-    ...
+...
 
-    imageFile, err := os.Open("picture.jpg")
-    ...
-    img, _, err := image.Decode(imageFile)
+imageFile, err := os.Open("picture.jpg")
+...
+img, _, err := image.Decode(imageFile)
 
-    dColorsOptions := Options{
-        InitialSelection: dcolors.RandomSelection,
-        ExactMatch: true
-    }
-    colors := ExtractDominantColors(img, 4, &dColorOptions);
-    for _, c := range colors {
-        fmt.Println(c.Hex())
-    }
+dColorsOptions := Options{
+    InitialSelection: dcolors.RandomSelection,
+    ExactMatch: true
+}
+colors := ExtractDominantColors(img, 4, &dColorOptions);
+for _, c := range colors {
+    fmt.Println(c.Hex())
+}
 
 ```
+
+## Options
+
+Options chosen for color extraction will have great impact on what colors are extracted.
+
+The following examples vary two parameters: `InitialSelection` and `ExactMatch`
+
+
+|      Image       | Random seed, similar colors  | Random seed, exact colors | Uniform seed, similar colors  | Uniform seed, exact colors |
+|:----------------:|:----------------------------:|:-------------------------:|:-----------------------------:|:--------------------------:|
+| ![](doc/cat.jpg) | ![](doc/nonexact-random.png) | ![](doc/exact-random.png) | ![](doc/nonexact-uniform.png) | ![](doc/exact-uniform.png) |
+
 
 ## License
 
