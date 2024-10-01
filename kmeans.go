@@ -1,7 +1,7 @@
 package dcolors
 
 import (
-	"math/rand/v2"
+	"math/rand"
 	"slices"
 )
 
@@ -156,7 +156,7 @@ func (c *colorExtractor) randomCentroids() []Color {
 	usedIndices := make(map[int]struct{})
 	i := 0
 	for {
-		idx := rand.IntN(c.numCentroids)
+		idx := rand.Intn(c.numCentroids)
 		if _, present := usedIndices[idx]; present {
 			continue
 		}
