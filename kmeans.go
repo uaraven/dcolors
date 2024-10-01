@@ -1,48 +1,28 @@
-package dominant_colors
+package dcolors
 
 import (
-	"reflect"
+	"math/rand/v2"
 	"slices"
 )
 
-type Cluster []Color
+type InitialSelectionType int
 
-func (c Cluster) mean() Color {
-	if len(c) == 0 {
-		return Color{}
-	}
-	var r, g, b uint32
-	for _, c := range c {
-		r = r + c.rgb[0]
-		g = g + c.rgb[1]
-		b = b + c.rgb[2]
-	}
-	return NewColorFromRgb(r/uint32(len(c)), g/uint32(len(c)), b/uint32(len(c)))
-}
-
-func (c Cluster) closestActual() Color {
-	avg := c.mean()
-	closest := c[0]
-	closestDistance := 1e100
-	for _, px := range c {
-		pxDist := px.Distance(avg)
-		if pxDist < closestDistance {
-			closest = px
-			closestDistance = pxDist
-		}
-	}
-	return closest
-}
+const (
+	// UniformSelection is used to select initial pixels from the image with a uniform spread over the image
+	UniformSelection InitialSelectionType = 0
+	// RandomSelection is used to select random pixels for the initial seed
+	RandomSelection = 1
+)
 
 type colorExtractor struct {
-	numCentroids int
-	pixels       []Color
-	clusters     []Cluster
-	exactMatch   bool
+	selectionType InitialSelectionType
+	numCentroids  int
+	pixels        []Color
+	exactMatch    bool
 }
 
-func newDominantColorExtractor(numCentroids int, match bool) *colorExtractor {
-	return &colorExtractor{numCentroids: numCentroids, exactMatch: match}
+func newDominantColorExtractor(numCentroids int, selectionType InitialSelectionType, match bool) *colorExtractor {
+	return &colorExtractor{numCentroids: numCentroids, exactMatch: match, selectionType: selectionType}
 }
 
 func (c *colorExtractor) extractDominantColors(pixels []Color) []Color {
@@ -51,32 +31,106 @@ func (c *colorExtractor) extractDominantColors(pixels []Color) []Color {
 	return c.runKMeans()
 }
 
+// runKmeans executes a K-means algorithm
+// this implementation strives to minimize memory allocations
 func (c *colorExtractor) runKMeans() []Color {
-	centroids := c.randomCentroids()
-	var clusters []Cluster
+	// initialize centroids
+	var centroids []Color
+	if c.selectionType == UniformSelection {
+		centroids = c.spreadCentroids()
+	} else {
+		centroids = c.randomCentroids()
+	}
+	newCentroids := make([]Color, len(centroids))
+	copy(newCentroids, centroids)
+
+	// prepare cluster color aggregator
+	// cluster color sum contains sum of RGB values in the cluster
+	clusterColorSum := make([][3]uint32, len(centroids))
+	// clusterCounts contains the number of pixels assigned to this cluster
+	clusterCounts := make([]uint32, len(centroids))
+	// next definitions are only used if we're looking for exact color from image
+	var pixelIndices []int
+	var closestPixelIdx []int
+	var closestDistance []float64
+	if c.exactMatch {
+		// we will need to keep track of the cluster to which each color belongs
+		pixelIndices = make([]int, len(c.pixels))
+		closestPixelIdx = make([]int, len(centroids))
+		closestDistance = make([]float64, len(centroids))
+	}
+
+	// this functions clears the average color of each cluster and the number of pixels in it
+	resetClusters := func() {
+		for i, _ := range clusterColorSum {
+			clusterColorSum[i][0] = 0
+			clusterColorSum[i][1] = 0
+			clusterColorSum[i][2] = 0
+			clusterCounts[i] = 0
+		}
+	}
+	// this function sums the RGB values of the color of the cluster and a provided color
+	sumRgb := func(target *[3]uint32, c Color) {
+		target[0] += c.rgb[0]
+		target[1] += c.rgb[1]
+		target[2] += c.rgb[2]
+	}
+
 	converged := false
 	for !converged {
-		clusters = c.clearClusters()
-
-		for _, point := range c.pixels {
+		for pxIndex, point := range c.pixels {
 			distances := c.distanceToCentroids(point, centroids)
 			clusterIndex := c.bestClusterIndex(distances)
-			clusters[clusterIndex] = append(clusters[clusterIndex], point)
+			// add the rgb values of the color of the cluster and increment the pixel count for that cluster
+			sumRgb(&clusterColorSum[clusterIndex], point)
+			clusterCounts[clusterIndex]++
+			if c.exactMatch {
+				// store the index of the cluster for this pixel
+				pixelIndices[pxIndex] = clusterIndex
+			}
 		}
-		newCentroids := make([]Color, len(centroids))
-		for i, cluster := range clusters {
-			newCentroids[i] = cluster.mean()
+		// calculate new centroid color for each cluster
+		for i, cluster := range clusterColorSum {
+			N := clusterCounts[i]
+			newCentroids[i] = NewColorFromRgb(cluster[0]/N, cluster[1]/N, cluster[2]/N)
 		}
-		converged = reflect.DeepEqual(centroids, newCentroids)
-		centroids = newCentroids
+		if c.exactMatch {
+			// initialize selected pixel and distance to the calculated centroid
+			for i := range newCentroids {
+				closestDistance[i] = 99e100
+				closestPixelIdx[i] = -1
+			}
+			// for every pixel find the closest centroid. If current pixel is closer to the centroid
+			// then the previous one, select this pixel as possible new centroid
+			for i, clusterIndex := range pixelIndices {
+				currentCentroid := newCentroids[clusterIndex]
+				distance := currentCentroid.Distance(c.pixels[i])
+				if distance < closestDistance[clusterIndex] {
+					closestDistance[clusterIndex] = distance
+					closestPixelIdx[clusterIndex] = i
+				}
+			}
+			// replace calculate centroid color with a closest exact color from the image
+			for i, closestColor := range closestPixelIdx {
+				newCentroids[i] = c.pixels[closestColor]
+			}
+		}
+		converged = slices.Equal(centroids, newCentroids)
+		if !converged {
+			// we need another iteration - clear cluster RGB sums and pixel counts
+			resetClusters()
+		}
+		copy(centroids, newCentroids)
 	}
+	// sort cluster by the number of pixels assigned to each cluster, largest first
 	centroidIndices := make([]int, len(centroids))
 	for i := range centroidIndices {
 		centroidIndices[i] = i
 	}
 	slices.SortFunc(centroidIndices, func(a, b int) int {
-		return len(clusters[b]) - len(clusters[a])
+		return int(clusterCounts[b]) - int(clusterCounts[a])
 	})
+
 	results := make([]Color, len(centroids))
 	for targetIdx, srcIdx := range centroidIndices {
 		results[targetIdx] = centroids[srcIdx]
@@ -84,8 +138,8 @@ func (c *colorExtractor) runKMeans() []Color {
 	return results
 }
 
-// randomCentroids samples the image to generate initial cluster centroids
-func (c *colorExtractor) randomCentroids() []Color {
+// spreadCentroids samples the image to generate initial cluster centroids
+func (c *colorExtractor) spreadCentroids() []Color {
 	centroids := make([]Color, c.numCentroids)
 	step := len(c.pixels) / c.numCentroids
 	idx := 0
@@ -96,12 +150,24 @@ func (c *colorExtractor) randomCentroids() []Color {
 	return centroids
 }
 
-func (c *colorExtractor) clearClusters() []Cluster {
-	result := make([]Cluster, c.numCentroids)
-	for i := range result {
-		result[i] = []Color{}
+// randomCentroids samples the image to generate initial cluster centroids
+func (c *colorExtractor) randomCentroids() []Color {
+	centroids := make([]Color, c.numCentroids)
+	usedIndices := make(map[int]struct{})
+	i := 0
+	for {
+		idx := rand.IntN(c.numCentroids)
+		if _, present := usedIndices[idx]; present {
+			continue
+		}
+		usedIndices[idx] = struct{}{}
+		centroids[i] = c.pixels[idx]
+		i++
+		if i == len(centroids) {
+			break
+		}
 	}
-	return result
+	return centroids
 }
 
 func (c *colorExtractor) distanceToCentroids(point Color, centroids []Color) []float64 {

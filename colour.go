@@ -1,4 +1,4 @@
-package dominant_colors
+package dcolors
 
 import (
 	"fmt"
@@ -6,28 +6,47 @@ import (
 	"math"
 )
 
-// Color represents a color in RGB coordinates
+// Color represents a color in RGB coordinates. Alpha channel is ignored and always assumed to be equal to 1
+//
 // This struct maintains internal representation of the color in L*a*b* space which is used to
-// calculate distance between colors
+// calculate perceptual distance between colors. For difference between RGB distance and LAB distance checlk
+// https://github.com/lucasb-eyer/go-colorful#comparing-colors
+//
+// Color implements standard Go color.Color interface
 type Color struct {
 	rgb [3]uint32
 	lab [3]float64
 }
 
+// NewColorFromRgb255 creates an instance of Color struct from 8-bit R,G and B channels.
 func NewColorFromRgb255(r, g, b uint32) Color {
-	return NewColourFromRGBA(r<<8, g<<8, b<<8, 0xFFFF)
+	return NewColorFromRGBA(r<<8, g<<8, b<<8, 0xFFFF)
 }
 
+// NewColorFromRgb creates an instance of Color struct from 16-bit R,G and B channels.
 func NewColorFromRgb(r, g, b uint32) Color {
-	return NewColourFromRGBA(r, g, b, 0xFFFF)
+	return NewColorFromRGBA(r, g, b, 0xFFFF)
 }
 
-func NewColourFromColor(c color.Color) Color {
+// NewColorFromColor creates and instance of Color struct from the Go's color.Color interface
+func NewColorFromColor(c color.Color) Color {
 	r, g, b, a := c.RGBA()
-	return NewColourFromRGBA(r, g, b, a)
+	if a != 0xffff { // if alpha is not 1, get original rgb values
+		r *= 0xffff
+		r /= a
+		g *= 0xffff
+		g /= a
+		b *= 0xffff
+		b /= a
+	}
+	return NewColorFromRGBA(r, g, b, a)
 }
 
-func NewColourFromRGBA(r, g, b, a uint32) Color {
+// NewColorFromRGBA creates a Color from R,G,B and A values. All color channels must be 16-bit.
+//
+// In contrast with Go color.Color the channel values must NOT be pre-multiplied by alpha.
+// Alpha channel is ignored.
+func NewColorFromRGBA(r, g, b, _ uint32) Color {
 	rf := delinearizeFast(float64(r) / 65535.0)
 	gf := delinearizeFast(float64(g) / 65535.0)
 	bf := delinearizeFast(float64(b) / 65535.0)
@@ -37,6 +56,7 @@ func NewColourFromRGBA(r, g, b, a uint32) Color {
 	return Color{rgb: [3]uint32{r, g, b}, lab: [3]float64{l, a_, b_}}
 }
 
+// DistanceRgb calculates distance between colors in RGB color space. This is not very useful
 func (v Color) DistanceRgb(other Color) float64 {
 	dx := v.rgb[0] - other.rgb[0]
 	dy := v.rgb[1] - other.rgb[1]
@@ -45,6 +65,7 @@ func (v Color) DistanceRgb(other Color) float64 {
 	return math.Sqrt(float64(dx*dx + dy*dy + dz*dz))
 }
 
+// Distance calculates the distance between colors using L*a*b* color space
 func (v Color) Distance(c2 Color) float64 {
 	l1, a1, b1 := v.lab[0], v.lab[1], v.lab[2]
 	l2, a2, b2 := c2.lab[0], c2.lab[1], c2.lab[2]

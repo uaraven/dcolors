@@ -3,7 +3,7 @@
 // This file is licensed under MIT license
 // SPDX-License-Identifier: MIT
 
-package dominant_colors
+package dcolors
 
 import "math"
 

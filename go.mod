@@ -1,3 +1,3 @@
-module github.com/uaraven/dominant-colors
+module github.com/uaraven/dcolors
 
-go 1.23.1
+go 1.21

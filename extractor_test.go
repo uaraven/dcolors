@@ -1,4 +1,4 @@
-package dominant_colors
+package dcolors
 
 import (
 	"fmt"
@@ -38,11 +38,11 @@ func TestExtractDominantColours(t *testing.T) {
 			}},
 		{"test-data/cat.jpg", 0, true, 5,
 			[]Color{
-				NewColorFromRgb(28043, 21540, 24186),
-				NewColorFromRgb(18939, 26594, 15474),
-				NewColorFromRgb(39708, 38554, 29321),
-				NewColorFromRgb(11587, 10290, 13257),
-				NewColorFromRgb(1373, 7906, 16939),
+				NewColorFromRgb(27951, 21362, 24097),
+				NewColorFromRgb(21442, 27903, 16506),
+				NewColorFromRgb(42706, 40046, 31216),
+				NewColorFromRgb(10997, 9562, 12094),
+				NewColorFromRgb(1196, 7661, 18279),
 			}},
 	}
 
