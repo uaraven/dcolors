@@ -92,7 +92,11 @@ func (c *colorExtractor) runKMeans() []Color {
 		// calculate new centroid color for each cluster
 		for i, cluster := range clusterColorSum {
 			N := clusterCounts[i]
-			newCentroids[i] = NewColorFromRgb(cluster[0]/N, cluster[1]/N, cluster[2]/N)
+			if N == 0 {
+				newCentroids[i] = centroids[i]
+			} else {
+				newCentroids[i] = NewColorFromRgb(cluster[0]/N, cluster[1]/N, cluster[2]/N)
+			}
 		}
 		if c.exactMatch {
 			// initialize selected pixel and distance to the calculated centroid
@@ -112,7 +116,9 @@ func (c *colorExtractor) runKMeans() []Color {
 			}
 			// replace calculate centroid color with a closest exact color from the image
 			for i, closestColor := range closestPixelIdx {
-				newCentroids[i] = c.pixels[closestColor]
+				if closestColor >= 0 {
+					newCentroids[i] = c.pixels[closestColor]
+				}
 			}
 		}
 		converged = slices.Equal(centroids, newCentroids)

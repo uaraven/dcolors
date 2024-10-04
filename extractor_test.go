@@ -44,6 +44,14 @@ func TestExtractDominantColours(t *testing.T) {
 				NewColorFromRgb(10997, 9562, 12094),
 				NewColorFromRgb(1196, 7661, 18279),
 			}},
+		{"test-data/bw.jpg", 0, true, 5,
+			[]Color{
+				NewColorFromRgb(59881, 59881, 59881),
+				NewColorFromRgb(0, 0, 0),
+				NewColorFromRgb(1285, 1285, 1285),
+				NewColorFromRgb(30840, 30840, 30840),
+				NewColorFromRgb(8481, 8481, 8481),
+			}},
 	}
 
 	for _, data := range testData {
